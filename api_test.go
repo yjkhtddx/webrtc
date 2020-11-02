@@ -33,7 +33,7 @@ func TestNewAPI_Options(t *testing.T) {
 		t.Error("Failed to set settings engine")
 	}
 
-	if len(api.mediaEngine.codecs) == 0 {
+	if len(api.mediaEngine.audioCodecs) == 0 || len(api.mediaEngine.videoCodecs) == 0 {
 		t.Error("Failed to set media engine")
 	}
 }

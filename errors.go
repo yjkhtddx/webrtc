@@ -168,7 +168,8 @@ var (
 	errPeerConnAddTransceiverFromKindOnlyAcceptsOne   = errors.New("AddTransceiverFromKind only accepts one RtpTransceiverInit")
 	errPeerConnAddTransceiverFromTrackOnlyAcceptsOne  = errors.New("AddTransceiverFromTrack only accepts one RtpTransceiverInit")
 	errPeerConnCodecsNotFound                         = errors.New("no codecs found")
-	errPeerConnAddTransceiverFromKindSupport          = errors.New("AddTransceiverFromKind currently only supports recvonly and sendrecv")
+	errPeerConnAddTransceiverFromKindSupport          = errors.New("AddTransceiverFromKind currently only supports recvonly")
+	errPeerConnAddTransceiverFromTrackSupport         = errors.New("AddTransceiverFromTrack currently only supports sendonly and sendrecv")
 	errPeerConnAddTransceiverFromTrackOneTransceiver  = errors.New("AddTransceiverFromTrack only accepts one RtpTransceiverInit")
 	errPeerConnSetIdentityProviderNotImplemented      = errors.New("TODO SetIdentityProvider")
 	errPeerConnWriteRTCPOpenWriteStream               = errors.New("WriteRTCP failed to open WriteStream")
@@ -204,8 +205,4 @@ var (
 	errSignalingStateProposedTransitionInvalid = errors.New("invalid proposed signaling state transition")
 
 	errStatsICECandidateStateInvalid = errors.New("cannot convert to StatsICECandidatePairStateSucceeded invalid ice candidate state")
-
-	errTrackLocalTrackRead   = errors.New("this is a local track and must not be read from")
-	errTrackLocalTrackWrite  = errors.New("this is a remote track and must not be written to")
-	errTrackSSRCNewTrackZero = errors.New("SSRC supplied to NewTrack() must be non-zero")
 )

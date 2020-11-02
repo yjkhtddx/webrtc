@@ -7,4 +7,5 @@ type RTPTransceiverInit struct {
 	// Streams       []*Track
 }
 
+// Deprecated: Use RTPTransceiverInit instead
 type RtpTransceiverInit = RTPTransceiverInit //nolint: stylecheck

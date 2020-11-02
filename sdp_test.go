@@ -221,14 +221,14 @@ func TestTrackDetailsFromSDP(t *testing.T) {
 		} else {
 			assert.Equal(t, RTPCodecTypeAudio, track.kind)
 			assert.Equal(t, uint32(2000), track.ssrc)
-			assert.Equal(t, "audio_trk_label", track.label)
+			assert.Equal(t, "audio_trk_label", track.streamID)
 		}
 		if track := trackDetailsForSSRC(tracks, 3000); track == nil {
 			assert.Fail(t, "missing video track with ssrc:3000")
 		} else {
 			assert.Equal(t, RTPCodecTypeVideo, track.kind)
 			assert.Equal(t, uint32(3000), track.ssrc)
-			assert.Equal(t, "video_trk_label", track.label)
+			assert.Equal(t, "video_trk_label", track.streamID)
 		}
 		if track := trackDetailsForSSRC(tracks, 4000); track != nil {
 			assert.Fail(t, "got the rtx track ssrc:3000 which should have been skipped")
@@ -239,7 +239,7 @@ func TestTrackDetailsFromSDP(t *testing.T) {
 			assert.Equal(t, RTPCodecTypeVideo, track.kind)
 			assert.Equal(t, uint32(5000), track.ssrc)
 			assert.Equal(t, "video_trk_id", track.id)
-			assert.Equal(t, "video_stream_id", track.label)
+			assert.Equal(t, "video_stream_id", track.streamID)
 		}
 	})
 
@@ -306,8 +306,7 @@ func TestHaveApplicationMediaSection(t *testing.T) {
 
 func TestMediaDescriptionFingerprints(t *testing.T) {
 	engine := &MediaEngine{}
-	engine.RegisterCodec(NewRTPH264Codec(DefaultPayloadTypeH264, 90000))
-	engine.RegisterCodec(NewRTPOpusCodec(DefaultPayloadTypeOpus, 48000))
+	assert.NoError(t, engine.RegisterDefaultCodecs())
 
 	sk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)

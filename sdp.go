@@ -16,15 +16,15 @@ import (
 // trackDetails represents any media source that can be represented in a SDP
 // This isn't keyed by SSRC because it also needs to support rid based sources
 type trackDetails struct {
-	mid   string
-	kind  RTPCodecType
-	label string
-	id    string
-	ssrc  uint32
-	rids  []string
+	mid      string
+	kind     RTPCodecType
+	streamID string
+	id       string
+	ssrc     SSRC
+	rids     []string
 }
 
-func trackDetailsForSSRC(trackDetails []trackDetails, ssrc uint32) *trackDetails {
+func trackDetailsForSSRC(trackDetails []trackDetails, ssrc SSRC) *trackDetails {
 	for i := range trackDetails {
 		if trackDetails[i].ssrc == ssrc {
 			return &trackDetails[i]
@@ -33,7 +33,7 @@ func trackDetailsForSSRC(trackDetails []trackDetails, ssrc uint32) *trackDetails
 	return nil
 }
 
-func filterTrackWithSSRC(incomingTracks []trackDetails, ssrc uint32) []trackDetails {
+func filterTrackWithSSRC(incomingTracks []trackDetails, ssrc SSRC) []trackDetails {
 	filtered := []trackDetails{}
 	for i := range incomingTracks {
 		if incomingTracks[i].ssrc != ssrc {
@@ -60,7 +60,7 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 
 	for _, media := range s.MediaDescriptions {
 		// Plan B can have multiple tracks in a signle media section
-		trackLabel := ""
+		streamID := ""
 		trackID := ""
 
 		// If media section is recvonly or inactive skip
@@ -101,7 +101,7 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 							continue
 						}
 						rtxRepairFlows[uint32(rtxRepairFlow)] = true
-						incomingTracks = filterTrackWithSSRC(incomingTracks, uint32(rtxRepairFlow)) // Remove if rtx was added as track before
+						incomingTracks = filterTrackWithSSRC(incomingTracks, SSRC(rtxRepairFlow)) // Remove if rtx was added as track before
 					}
 				}
 
@@ -111,7 +111,7 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 			case sdp.AttrKeyMsid:
 				split := strings.Split(attr.Value, " ")
 				if len(split) == 2 {
-					trackLabel = split[0]
+					streamID = split[0]
 					trackID = split[1]
 				}
 
@@ -128,14 +128,14 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 				}
 
 				if len(split) == 3 && strings.HasPrefix(split[1], "msid:") {
-					trackLabel = split[1][len("msid:"):]
+					streamID = split[1][len("msid:"):]
 					trackID = split[2]
 				}
 
 				isNewTrack := true
 				trackDetails := &trackDetails{}
 				for i := range incomingTracks {
-					if incomingTracks[i].ssrc == uint32(ssrc) {
+					if incomingTracks[i].ssrc == SSRC(ssrc) {
 						trackDetails = &incomingTracks[i]
 						isNewTrack = false
 					}
@@ -143,9 +143,9 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 
 				trackDetails.mid = midValue
 				trackDetails.kind = codecType
-				trackDetails.label = trackLabel
+				trackDetails.streamID = streamID
 				trackDetails.id = trackID
-				trackDetails.ssrc = uint32(ssrc)
+				trackDetails.ssrc = SSRC(ssrc)
 
 				if isNewTrack {
 					incomingTracks = append(incomingTracks, *trackDetails)
@@ -153,13 +153,13 @@ func trackDetailsFromSDP(log logging.LeveledLogger, s *sdp.SessionDescription) [
 			}
 		}
 
-		if rids := getRids(media); len(rids) != 0 && trackID != "" && trackLabel != "" {
+		if rids := getRids(media); len(rids) != 0 && trackID != "" && streamID != "" {
 			newTrack := trackDetails{
-				mid:   midValue,
-				kind:  codecType,
-				label: trackLabel,
-				id:    trackID,
-				rids:  []string{},
+				mid:      midValue,
+				kind:     codecType,
+				streamID: streamID,
+				id:       trackID,
+				rids:     []string{},
 			}
 			for rid := range rids {
 				newTrack.rids = append(newTrack.rids, rid)
@@ -298,7 +298,7 @@ func addTransceiverSDP(d *sdp.SessionDescription, isPlanB bool, dtlsFingerprints
 
 	codecs := mediaEngine.GetCodecsByKind(t.kind)
 	for _, codec := range codecs {
-		media.WithCodec(codec.PayloadType, codec.Name, codec.ClockRate, codec.Channels, codec.SDPFmtpLine)
+		media.WithCodec(uint8(codec.PayloadType), codec.MimeType, codec.ClockRate, codec.Channels, codec.SDPFmtpLine)
 
 		for _, feedback := range codec.RTPCodecCapability.RTCPFeedback {
 			media.WithValueAttribute("rtcp-fb", fmt.Sprintf("%d %s %s", codec.PayloadType, feedback.Type, feedback.Parameter))
@@ -335,16 +335,17 @@ func addTransceiverSDP(d *sdp.SessionDescription, isPlanB bool, dtlsFingerprints
 		media.WithValueAttribute("simulcast", "recv "+strings.Join(recvRids, ";"))
 	}
 
-	for _, mt := range transceivers {
-		if mt.Sender() != nil && mt.Sender().Track() != nil {
-			track := mt.Sender().Track()
-			media = media.WithMediaSource(track.SSRC(), track.Label() /* cname */, track.Label() /* streamLabel */, track.ID())
-			if !isPlanB {
-				media = media.WithPropertyAttribute("msid:" + track.Label() + " " + track.ID())
-				break
-			}
-		}
-	}
+	// TODO(Sean-Der)
+	// for _, mt := range transceivers {
+	// 	if mt.Sender() != nil && mt.Sender().Track() != nil {
+	// 		track := mt.Sender().Track()
+	// 		media = media.WithMediaSource(track.SSRC(), track.Label() /* cname */, track.Label() /* streamLabel */, track.ID())
+	// 		if !isPlanB {
+	// 			media = media.WithPropertyAttribute("msid:" + track.Label() + " " + track.ID())
+	// 			break
+	// 		}
+	// 	}
+	// }
 
 	media = media.WithPropertyAttribute(t.Direction().String())
 
